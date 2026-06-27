@@ -1,0 +1,13 @@
+// Prisma schema. The datasource + generator are set up; the data model (tables)
+// comes in the next step. `url` is read from DATABASE_URL in your .env.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- Tables go here next (survey submissions + tracking events) ---

@@ -1,0 +1,31 @@
+# Local development database for Viso.
+# This runs ONLY on your machine. Production uses Liara's managed PostgreSQL.
+# Start:   docker compose up -d
+# Stop:    docker compose down
+# Wipe:    docker compose down -v   (deletes all local data)
+
+services:
+  db:
+    image: postgres:16
+    container_name: viso-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"          # host:container — your app/GUI connects to localhost:5432
+    volumes:
+      - viso_pgdata:/var/lib/postgresql/data   # data survives restarts
+
+  adminer:                    # a tiny web UI to look inside the database
+    image: adminer:4
+    container_name: viso-adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"          # open http://localhost:8080
+    depends_on:
+      - db
+
+volumes:
+  viso_pgdata:

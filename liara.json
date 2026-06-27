@@ -1,0 +1,5 @@
+{
+  "app": "viso-backend",
+  "platform": "docker",
+  "port": 4000
+}
