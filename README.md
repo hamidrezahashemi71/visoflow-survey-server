@@ -35,8 +35,11 @@ src/
     error-handler.ts
   routes/             # feature route plugins (autoloaded after plugins)
     health.ts         # GET /health → { status, db } via SELECT 1
-  schemas/            # shared zod schemas (response/error shapes; share with the frontend)
-prisma/schema.prisma  # datasource + generator only (data model comes next)
+    track.ts submit.ts            # public funnel ingestion + final lead
+    analytics.ts submissions.ts   # admin read side (bearer-protected)
+  schemas/            # shared zod schemas (frontend contracts; share where practical)
+  lib/                # env, db, auth, ip-hash, derive, query, constants, track-id
+prisma/schema.prisma  # Session, Event, Submission (+ enums)
 Dockerfile            # multi-stage prod image · liara.json · docker-compose.yml (dev DB)
 ```
 
@@ -79,6 +82,43 @@ pnpm check       # all four in sequence
 A **lefthook** pre-commit hook runs Biome (with autofix) + typecheck on staged
 files automatically.
 
+> `pnpm test` runs **integration tests against a real database** (an isolated
+> `viso_test` schema in the local dev DB), so the dev database must be up first
+> (`pnpm db:up`). `test/global-setup.ts` creates and syncs the schema; each test
+> resets its tables.
+
+## API (campaign validation)
+
+All shapes are zod schemas in `src/schemas` and appear in Swagger at `/docs`.
+
+**Public** (rate-limited, body-size capped, beacon-tolerant):
+- `POST /v1/track` — funnel/telemetry ingestion. Accepts batches and
+  `navigator.sendBeacon` (text/plain or octet-stream). Upserts the Session by
+  `trackId`, dedupes events by `(sessionId, clientEventId)`, validates-and-skips
+  bad events, replies `202 { ok: true }`.
+- `POST /v1/submit` — final survey + lead. Flips the Session to `COMPLETED` and
+  idempotently creates/updates the single `Submission` (keyed on session),
+  deriving the curated columns. Replies `{ ok: true, id }`.
+
+**Admin** (require `Authorization: Bearer $ADMIN_API_KEY`; not in public CORS):
+- `GET /v1/analytics/funnel` — drop-off per questionNumber and per qid + started/
+  completed/abandoned totals.
+- `GET /v1/analytics/overview` — conversion by campaign/source, band &
+  pilotInterest distributions, firmographics.
+- `GET /v1/submissions` — paginated leads. `GET /v1/submissions/export.csv` — CSV.
+
+Filters (admin): `from`, `to`, `campaignAid`, `utmSource`, `utmCampaign` (plus
+`band`, `pilotInterest`, `region` on submissions).
+
+> **Scoring decision (flagged):** `/v1/submit` trusts the client-computed
+> `overallScore`/`band`/money figures, but always stores full
+> `answers`/`controllers`/`rawPayload` so the server can recompute
+> authoritatively later. Porting the Excel scoring + money model server-side is
+> an optional follow-up.
+
+> The curated-column → questionKey mapping lives in `src/lib/derive.ts` — adjust
+> those keys to match the real frontend questionKeys.
+
 ## Dev vs. build vs. deploy
 
 - **Dev:** `pnpm dev` — Docker DB + `tsx watch` (extensionless imports resolved by esbuild, hot-reload).
@@ -96,11 +136,16 @@ files automatically.
 The app boots from **env vars alone** — never commit secrets. In the Liara
 dashboard create a **PostgreSQL** database and set the app's env vars:
 
-| Var            | Value                                            |
-| -------------- | ------------------------------------------------ |
-| `DATABASE_URL` | the connection string Liara gives you            |
-| `CORS_ORIGIN`  | your frontend's domain (e.g. `https://app.viso…`) |
-| `NODE_ENV`     | `production`                                      |
+| Var             | Value                                             |
+| --------------- | ------------------------------------------------- |
+| `DATABASE_URL`  | the connection string Liara gives you             |
+| `CORS_ORIGIN`   | your frontend's domain (e.g. `https://app.viso…`)  |
+| `NODE_ENV`      | `production`                                       |
+| `ADMIN_API_KEY` | bearer token for the admin endpoints (≥16 chars)  |
+| `IP_HASH_SALT`  | random salt for hashing respondent IPs (≥16 chars) |
+
+After the first deploy, apply the schema to Liara's database with
+`pnpm prisma migrate deploy` (pointed at the production `DATABASE_URL`).
 
 `PORT` is injected by Liara; the app listens on it (host `0.0.0.0`).
 
@@ -122,8 +167,11 @@ in production.
   long-lived Node server, so **edge/serverless driver adapters are not needed**.
 - Typed SQL for hand-written analytics later: add `previewFeatures = ["typedSql"]`
   to the generator and run `prisma generate --sql`.
-- The data model is the **next task** — `prisma/schema.prisma` is intentionally
-  datasource + generator only for now.
+- Data model: `Session` (one per attempt, with attribution + progress),
+  `Event` (funnel/telemetry stream), `Submission` (one lead per session). The
+  funnel analytics use raw SQL (`COUNT(DISTINCT …)`); the rest uses the typed
+  client. "Abandoned" is **derived** (IN_PROGRESS + `lastSeenAt` older than
+  `ABANDON_THRESHOLD_MS`), never stored.
 
 ## Iran note — if Docker image downloads hang/fail
 Docker Desktop → **Settings → Docker Engine**, add a mirror, Apply & Restart:

@@ -21,6 +21,10 @@ const EnvSchema = z.object({
   DATABASE_URL: z.string().url(),
   // Comma-separated list of allowed origins, or "*" for any.
   CORS_ORIGIN: z.string().default("*"),
+  // Bearer token guarding the admin analytics/submissions endpoints.
+  ADMIN_API_KEY: z.string().min(16),
+  // Salt used to hash respondent IPs (privacy — raw IPs are never stored).
+  IP_HASH_SALT: z.string().min(16),
 });
 
 const parsed = EnvSchema.safeParse(process.env);

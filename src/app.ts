@@ -12,7 +12,12 @@ import { env } from "./lib/env";
 // only listens) lets tests build an app instance and use `app.inject(...)`
 // without binding a port.
 export async function buildApp(): Promise<FastifyInstance> {
-  const app = Fastify({ logger: buildLoggerOptions() }).withTypeProvider<ZodTypeProvider>();
+  const app = Fastify({
+    logger: buildLoggerOptions(),
+    // Liara terminates TLS at a proxy; trust it so `req.ip` is the real client
+    // (used for IP hashing and per-IP rate limiting).
+    trustProxy: true,
+  }).withTypeProvider<ZodTypeProvider>();
 
   // Route the zod schemas declared on each route through zod for runtime
   // validation (requests) and serialization (responses).

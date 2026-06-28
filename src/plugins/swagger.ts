@@ -14,6 +14,15 @@ export default fp(async (app) => {
         description: "Viso backend API",
         version: "0.1.0",
       },
+      components: {
+        securitySchemes: {
+          bearerAuth: {
+            type: "http",
+            scheme: "bearer",
+            description: "Admin API key as a bearer token (ADMIN_API_KEY).",
+          },
+        },
+      },
     },
     transform: jsonSchemaTransform,
   });

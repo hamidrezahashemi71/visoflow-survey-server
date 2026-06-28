@@ -1,5 +1,6 @@
-// Prisma schema. The datasource + generator are set up; the data model (tables)
-// comes in the next step. `url` is read from DATABASE_URL in your .env.
+// Prisma schema for the Viso survey-funnel backend.
+// Hybrid model: structured/indexed columns for analytics dimensions, plus JSONB
+// for full fidelity. `url` is read from DATABASE_URL.
 
 generator client {
   provider = "prisma-client-js"
@@ -10,4 +11,132 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// --- Tables go here next (survey submissions + tracking events) ---
+enum SessionStatus {
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum EventType {
+  QUIZ_START
+  QUESTION_VIEW
+  ANSWER
+  NEXT
+  BACK
+  QUIZ_COMPLETE
+  ABANDON
+}
+
+// One row per respondent attempt, keyed by the client's trackId.
+model Session {
+  id       String @id @default(cuid())
+  trackId  String @unique
+  project  String
+  language String
+  type     String
+
+  // Attribution (first-touch; set on first sight, never overwritten).
+  campaignAid String?
+  code        String?
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  utmContent  String?
+  utmTerm     String?
+  referrer    String?
+  landingPath String?
+
+  // Client/context.
+  userAgent String?
+  ipHash    String? // salted hash of the IP — raw IP is never stored
+  country   String?
+
+  // Progress.
+  status             SessionStatus @default(IN_PROGRESS)
+  lastQid            String?
+  lastQuestionNumber Int?
+  maxQuestionNumber  Int? // furthest question reached
+  startedAt          DateTime      @default(now())
+  lastSeenAt         DateTime      @default(now())
+  completedAt        DateTime?
+
+  createdAt DateTime @default(now())
+
+  events     Event[]
+  submission Submission?
+
+  @@index([status])
+  @@index([campaignAid])
+  @@index([utmCampaign])
+  @@index([createdAt])
+}
+
+// The funnel/telemetry stream.
+model Event {
+  id            String @id @default(cuid())
+  sessionId     String
+  clientEventId String? // for dedupe of retried beacons
+
+  type           EventType
+  qid            String?
+  questionKey    String?
+  questionNumber Int?
+  category       String? // organization | noshow | deposit | closing
+  aid            String?
+  value          String?
+  meta           Json?
+
+  occurredAt DateTime // client timestamp
+  receivedAt DateTime @default(now())
+  seq        Int? // client monotonic order
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, clientEventId])
+  @@index([sessionId, occurredAt])
+  @@index([type, questionNumber])
+  @@index([qid])
+}
+
+// One final record per session — the qualified lead.
+model Submission {
+  id        String @id @default(cuid())
+  sessionId String @unique // idempotent: re-submit updates, never duplicates
+  trackId   String
+
+  // Lead.
+  whatsapp      String
+  pilotInterest String?
+  role          String?
+
+  // Client-computed results.
+  overallScore     Float?
+  band             String?
+  pillarScores     Json? // { organization, noshow, deposit }
+  moneyMonthlyLoss Float?
+  moneyRecoverable Float?
+  moneyFreedHours  Float?
+
+  // Curated market-validation columns (denormalized for easy SQL).
+  region        String?
+  staffCount    String?
+  weeklyVolume  String?
+  avgPrice      String?
+  noShows       String?
+  deposit       String?
+  triedSoftware String?
+  services      String[]
+
+  // Full fidelity.
+  answers     Json // { [questionKey]: { aid, value } }
+  controllers Json
+  rawPayload  Json
+
+  createdAt DateTime @default(now())
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([band])
+  @@index([pilotInterest])
+  @@index([region])
+  @@index([createdAt])
+}
