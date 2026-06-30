@@ -23,8 +23,11 @@ ENV PRISMA_ENGINES_MIRROR="https://registry.npmmirror.com/-/binary/prisma"
 COPY . .
 RUN pnpm install --frozen-lockfile
 RUN pnpm build
-# Drop devDependencies; the generated Prisma client (a prod dependency) stays.
-RUN pnpm prune --prod
+# NOTE: we intentionally do NOT run `pnpm prune --prod`. With pnpm, prune
+# re-triggers the `postinstall` (prisma generate) lifecycle AFTER the `prisma`
+# CLI devDependency has been removed, which fails the build ("prisma: not
+# found"). Keeping all deps also guarantees the generated Prisma client stays
+# intact. The image is slightly larger; we can slim it later with `pnpm deploy`.
 
 # --- Runner: minimal, non-root production image ---
 FROM base AS runner
