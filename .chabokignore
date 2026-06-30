@@ -1,0 +1,14 @@
+# Controls what the `chabok` CLI uploads. The CLI checks this file BEFORE
+# .dockerignore/.gitignore, so it overrides them for the upload only.
+# IMPORTANT: do NOT exclude the Dockerfile here — Chabokan needs it to build.
+# (.dockerignore still governs what `COPY . .` pulls in during the Docker build.)
+node_modules
+dist
+coverage
+.git
+.vscode
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
