@@ -4,17 +4,24 @@
 FROM node:22-alpine AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
+# corepack downloads pnpm from a registry on first use; point it at a mirror
+# reachable from Iran so the build doesn't hang fetching the package manager.
+ENV COREPACK_NPM_REGISTRY="https://registry.npmmirror.com"
 RUN corepack enable
 WORKDIR /app
 
 # --- Build: install all deps, generate the Prisma client, bundle with tsup ---
 FROM base AS build
-# Copy manifests first for better layer caching. The Prisma schema is required
-# here because `postinstall` runs `prisma generate`.
-COPY package.json pnpm-lock.yaml ./
-COPY prisma ./prisma
-RUN pnpm install --frozen-lockfile
+# Prisma's query engine is downloaded from binaries.prisma.sh during
+# `prisma generate` (postinstall) — that host is often unreachable from Iran,
+# so pull the engine from a mirror instead.
+ENV PRISMA_ENGINES_MIRROR="https://registry.npmmirror.com/-/binary/prisma"
+# Copy the whole build context in one shot (node_modules, dist, .git, .env are
+# excluded via .dockerignore). A per-subdirectory `COPY prisma ./prisma` failed
+# in Chabokan's build context, so we copy everything at once. postinstall runs
+# `prisma generate`, which needs prisma/schema.prisma (present in this copy).
 COPY . .
+RUN pnpm install --frozen-lockfile
 RUN pnpm build
 # Drop devDependencies; the generated Prisma client (a prod dependency) stays.
 RUN pnpm prune --prod

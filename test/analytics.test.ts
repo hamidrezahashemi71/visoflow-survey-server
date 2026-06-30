@@ -122,7 +122,7 @@ describe("GET /v1/analytics/overview", () => {
       data: {
         sessionId: (await prisma.session.findFirstOrThrow({ where: { status: "COMPLETED" } })).id,
         trackId: "visoflow-ir-seed1-survey",
-        whatsapp: "+989120000000",
+        phone: "+989120000000",
         band: "A",
         region: "tehran",
         answers: {},

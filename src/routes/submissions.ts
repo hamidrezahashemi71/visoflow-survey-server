@@ -30,7 +30,7 @@ function buildWhere(filters: Filters): Prisma.SubmissionWhereInput {
 const SUBMISSION_SELECT = {
   id: true,
   trackId: true,
-  whatsapp: true,
+  phone: true,
   overallScore: true,
   band: true,
   pilotInterest: true,
@@ -49,7 +49,7 @@ function toListItem(s: SubmissionRow) {
   return {
     id: s.id,
     trackId: s.trackId,
-    whatsapp: s.whatsapp,
+    phone: s.phone,
     overallScore: s.overallScore,
     band: s.band,
     pilotInterest: s.pilotInterest,
@@ -68,7 +68,7 @@ function toListItem(s: SubmissionRow) {
 const CSV_COLUMNS = [
   "id",
   "trackId",
-  "whatsapp",
+  "phone",
   "overallScore",
   "band",
   "pilotInterest",

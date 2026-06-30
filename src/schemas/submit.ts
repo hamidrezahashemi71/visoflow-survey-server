@@ -38,10 +38,22 @@ export const ComputedSchema = z.object({
   money: MoneyModelSchema.nullish(),
 });
 
+// Optional lead phone. Empty/whitespace is treated as absent (a submit with no
+// phone must succeed); when present it's trimmed and gets a lenient sanity check
+// so we never hard-block a lead over formatting.
+export const PhoneSchema = z
+  .string()
+  .optional()
+  .transform((value) => value?.trim())
+  .transform((value) => (value ? value : undefined))
+  .refine((value) => value === undefined || (value.length >= 4 && value.length <= 32), {
+    message: "phone must be 4–32 characters when provided",
+  });
+
 // Body of POST /v1/submit — strict validation (this is the qualified lead).
 export const SubmitRequestSchema = z.object({
   trackId: z.string().min(1),
-  whatsapp: z.string().min(5).max(32),
+  phone: PhoneSchema,
   answers: AnswersSchema,
   controllers: z.array(ControllerSchema).default([]),
   computed: ComputedSchema,

@@ -22,7 +22,7 @@ const trackId = "visoflow-ir-sub1-survey";
 
 const body = {
   trackId,
-  whatsapp: "+989121234567",
+  phone: "+989121234567",
   answers: {
     region: { aid: "tehran", value: "" }, // plain select -> aid is the answer
     staffCount: { aid: "", value: "10" }, // input -> value is the answer
@@ -55,7 +55,7 @@ describe("POST /v1/submit", () => {
     const submission = await prisma.submission.findUniqueOrThrow({
       where: { sessionId: session.id },
     });
-    expect(submission.whatsapp).toBe("+989121234567");
+    expect(submission.phone).toBe("+989121234567");
     expect(submission.region).toBe("tehran"); // from aid (empty value)
     expect(submission.staffCount).toBe("10"); // from value
     expect(submission.pilotInterest).toBe("yes");
@@ -75,7 +75,7 @@ describe("POST /v1/submit", () => {
     const second = await app.inject({
       method: "POST",
       url: "/v1/submit",
-      payload: { ...body, whatsapp: "+989120000000" },
+      payload: { ...body, phone: "+989120000000" },
     });
 
     expect(first.statusCode).toBe(200);
@@ -88,6 +88,42 @@ describe("POST /v1/submit", () => {
     expect(await prisma.event.count({ where: { type: "QUIZ_COMPLETE" } })).toBe(1);
 
     const submission = await prisma.submission.findFirstOrThrow();
-    expect(submission.whatsapp).toBe("+989120000000"); // updated
+    expect(submission.phone).toBe("+989120000000"); // updated
+  });
+
+  it("succeeds with no phone and stores phone = null", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: "/v1/submit",
+      payload: {
+        trackId: body.trackId,
+        answers: body.answers,
+        controllers: body.controllers,
+        computed: body.computed,
+        attribution: body.attribution,
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().ok).toBe(true);
+
+    const session = await prisma.session.findUniqueOrThrow({ where: { trackId } });
+    expect(session.status).toBe("COMPLETED");
+    const submission = await prisma.submission.findUniqueOrThrow({
+      where: { sessionId: session.id },
+    });
+    expect(submission.phone).toBeNull();
+  });
+
+  it("treats a whitespace-only phone as absent (null)", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: "/v1/submit",
+      payload: { ...body, phone: "   " },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const submission = await prisma.submission.findFirstOrThrow();
+    expect(submission.phone).toBeNull();
   });
 });

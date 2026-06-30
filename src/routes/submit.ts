@@ -66,7 +66,7 @@ const submitRoute: FastifyPluginAsyncZod = async (app) => {
       // Fields shared by create and update (idempotent upsert on sessionId).
       const submissionData = {
         trackId: body.trackId,
-        whatsapp: body.whatsapp,
+        phone: body.phone ?? null,
         pilotInterest: curated.pilotInterest,
         role: curated.role,
         overallScore: computed.overallScore ?? null,

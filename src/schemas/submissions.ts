@@ -4,7 +4,7 @@ import { z } from "zod";
 export const SubmissionListItemSchema = z.object({
   id: z.string(),
   trackId: z.string(),
-  whatsapp: z.string(),
+  phone: z.string().nullable(),
   overallScore: z.number().nullable(),
   band: z.string().nullable(),
   pilotInterest: z.string().nullable(),

@@ -104,7 +104,7 @@ model Submission {
   trackId   String
 
   // Lead.
-  whatsapp      String
+  phone         String?
   pilotInterest String?
   role          String?
 
