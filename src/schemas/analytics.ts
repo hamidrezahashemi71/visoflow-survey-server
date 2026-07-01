@@ -49,6 +49,8 @@ export const OverviewResponseSchema = z.object({
     sessions: z.number().int(),
     completed: z.number().int(),
     completionRate: z.number(),
+    phoneCaptured: z.number().int(), // sessions with a phone, completed or not
+    phoneCaptureRate: z.number(),
   }),
   byCampaign: z.array(CampaignStatSchema),
   bySource: z.array(CampaignStatSchema),

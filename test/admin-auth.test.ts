@@ -19,6 +19,8 @@ const adminRoutes = [
   "/v1/analytics/overview",
   "/v1/submissions",
   "/v1/submissions/export.csv",
+  "/v1/leads",
+  "/v1/leads/export.csv",
 ];
 
 describe("admin auth", () => {

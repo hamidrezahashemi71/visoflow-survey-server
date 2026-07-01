@@ -143,4 +143,24 @@ describe("GET /v1/analytics/overview", () => {
     expect(body.byCampaign.find((c: { key: string }) => c.key === "camp1")?.sessions).toBe(2);
     expect(body.bandDistribution.find((b: { key: string }) => b.key === "A")?.count).toBe(1);
   });
+
+  it("counts phone captures (completed or not) toward the phone-capture rate", async () => {
+    await seedSession(1, 3, true); // no phone captured
+    await seedSession(2, 1, false);
+    await app.inject({
+      method: "POST",
+      url: "/v1/phone",
+      payload: { trackId: "visoflow-ir-seed2-survey", phone: "09121234567" },
+    });
+
+    const res = await app.inject({
+      method: "GET",
+      url: "/v1/analytics/overview",
+      headers: adminHeaders,
+    });
+    const body = res.json();
+    expect(body.totals.sessions).toBe(2);
+    expect(body.totals.phoneCaptured).toBe(1);
+    expect(body.totals.phoneCaptureRate).toBeCloseTo(0.5);
+  });
 });

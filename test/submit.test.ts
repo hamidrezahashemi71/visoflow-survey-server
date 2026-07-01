@@ -126,4 +126,64 @@ describe("POST /v1/submit", () => {
     const submission = await prisma.submission.findFirstOrThrow();
     expect(submission.phone).toBeNull();
   });
+
+  it("sets Session.phone from the submit payload (question path) when not already captured", async () => {
+    await app.inject({ method: "POST", url: "/v1/submit", payload: body });
+
+    const session = await prisma.session.findUniqueOrThrow({ where: { trackId } });
+    expect(session.phone).toBe(body.phone);
+    expect(session.phoneSource).toBe("question");
+    expect(session.phoneCapturedAt).not.toBeNull();
+
+    expect(
+      await prisma.event.count({ where: { sessionId: session.id, type: "PHONE_CAPTURED" } }),
+    ).toBe(1);
+  });
+
+  it("copies an earlier modal-captured Session.phone into the Submission when the payload carries none", async () => {
+    await app.inject({
+      method: "POST",
+      url: "/v1/phone",
+      payload: { trackId, phone: "09121110000", source: "modal" },
+    });
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/v1/submit",
+      payload: {
+        trackId: body.trackId,
+        answers: body.answers,
+        controllers: body.controllers,
+        computed: body.computed,
+        attribution: body.attribution,
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const submission = await prisma.submission.findFirstOrThrow();
+    expect(submission.phone).toBe("09121110000");
+
+    // The modal capture stays the session's phone/source — submit doesn't
+    // overwrite an earlier capture.
+    const session = await prisma.session.findUniqueOrThrow({ where: { trackId } });
+    expect(session.phone).toBe("09121110000");
+    expect(session.phoneSource).toBe("modal");
+  });
+
+  it("does not overwrite an earlier modal-captured Session.phone when submit carries its own", async () => {
+    await app.inject({
+      method: "POST",
+      url: "/v1/phone",
+      payload: { trackId, phone: "09121110000", source: "modal" },
+    });
+
+    await app.inject({ method: "POST", url: "/v1/submit", payload: body });
+
+    const submission = await prisma.submission.findFirstOrThrow();
+    expect(submission.phone).toBe(body.phone); // the submitted value wins for the lead record
+
+    const session = await prisma.session.findUniqueOrThrow({ where: { trackId } });
+    expect(session.phone).toBe("09121110000"); // first-touch capture is preserved
+    expect(session.phoneSource).toBe("modal");
+  });
 });

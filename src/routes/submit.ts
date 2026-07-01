@@ -41,6 +41,17 @@ const submitRoute: FastifyPluginAsyncZod = async (app) => {
       const curated = deriveCuratedColumns(body.answers);
       const { computed } = body;
 
+      // Keep Session.phone and Submission.phone in sync regardless of capture
+      // path: a phone typed at the final question ("question" path) becomes
+      // the session's first-touch phone if one isn't already set (e.g. by the
+      // modal); conversely, a phone captured earlier by the modal is copied
+      // into the Submission when the submit payload itself carries none.
+      const existingSession = await prisma.session.findUnique({
+        where: { trackId: body.trackId },
+        select: { id: true, phone: true },
+      });
+      const shouldSetSessionPhone = body.phone != null && existingSession?.phone == null;
+
       const session = await prisma.session.upsert({
         where: { trackId: body.trackId },
         create: {
@@ -55,18 +66,37 @@ const submitRoute: FastifyPluginAsyncZod = async (app) => {
           startedAt: now,
           lastSeenAt: now,
           completedAt: now,
+          ...(shouldSetSessionPhone
+            ? { phone: body.phone, phoneSource: "question", phoneCapturedAt: now }
+            : {}),
         },
         update: {
           status: "COMPLETED",
           lastSeenAt: now,
           completedAt: now,
+          ...(shouldSetSessionPhone
+            ? { phone: body.phone, phoneSource: "question", phoneCapturedAt: now }
+            : {}),
         },
       });
+
+      if (shouldSetSessionPhone) {
+        await prisma.event.create({
+          data: {
+            sessionId: session.id,
+            type: "PHONE_CAPTURED",
+            value: body.phone,
+            occurredAt: now,
+          },
+        });
+      }
+
+      const finalPhone = body.phone ?? existingSession?.phone ?? null;
 
       // Fields shared by create and update (idempotent upsert on sessionId).
       const submissionData = {
         trackId: body.trackId,
-        phone: body.phone ?? null,
+        phone: finalPhone,
         pilotInterest: curated.pilotInterest,
         role: curated.role,
         overallScore: computed.overallScore ?? null,

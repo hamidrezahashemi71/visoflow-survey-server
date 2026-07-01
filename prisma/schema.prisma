@@ -24,6 +24,7 @@ enum EventType {
   BACK
   QUIZ_COMPLETE
   ABANDON
+  PHONE_CAPTURED
 }
 
 // One row per respondent attempt, keyed by the client's trackId.
@@ -50,6 +51,12 @@ model Session {
   ipHash    String? // salted hash of the IP — raw IP is never stored
   country   String?
 
+  // Early lead capture — set as soon as a phone number is known (modal or
+  // question path), independent of whether the session ever completes.
+  phone           String?
+  phoneSource     String? // "modal" | "question"
+  phoneCapturedAt DateTime? // set once, on first capture
+
   // Progress.
   status             SessionStatus @default(IN_PROGRESS)
   lastQid            String?
@@ -68,6 +75,7 @@ model Session {
   @@index([campaignAid])
   @@index([utmCampaign])
   @@index([createdAt])
+  @@index([phone])
 }
 
 // The funnel/telemetry stream.
