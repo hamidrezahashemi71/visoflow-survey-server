@@ -38,6 +38,22 @@ describe("GET /v1/leads", () => {
     expect(lead.phoneSource).toBe("modal");
     expect(lead.status).toBe("IN_PROGRESS");
     expect(lead.hasSubmission).toBe(false);
+    expect(lead.appInterest).toBe(false); // never clicked the app offer
+  });
+
+  it("surfaces the app-interest flag on a lead that clicked the offer", async () => {
+    const trackId = "visoflow-ir-lead4-survey";
+    await app.inject({
+      method: "POST",
+      url: "/v1/phone",
+      payload: { trackId, phone: "09121234567" },
+    });
+    await app.inject({ method: "POST", url: "/v1/app-interest", payload: { trackId } });
+
+    const res = await app.inject({ method: "GET", url: "/v1/leads", headers: adminHeaders });
+    const lead = res.json().items.find((i: { trackId: string }) => i.trackId === trackId);
+    expect(lead.appInterest).toBe(true);
+    expect(lead.appInterestAt).not.toBeNull();
   });
 
   it("excludes sessions without a phone", async () => {

@@ -25,6 +25,7 @@ enum EventType {
   QUIZ_COMPLETE
   ABANDON
   PHONE_CAPTURED
+  APP_INTEREST
 }
 
 // One row per respondent attempt, keyed by the client's trackId.
@@ -56,6 +57,12 @@ model Session {
   phone           String?
   phoneSource     String? // "modal" | "question"
   phoneCapturedAt DateTime? // set once, on first capture
+
+  // Interest in the "Viso app handles everything, free" offer — set when the
+  // respondent ticks the checkbox that opens the promo modal. Defaults to false
+  // so the count is simply the rows where it is true.
+  appInterest   Boolean   @default(false)
+  appInterestAt DateTime? // set once, the first time it becomes true
 
   // Progress.
   status             SessionStatus @default(IN_PROGRESS)

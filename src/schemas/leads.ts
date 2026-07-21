@@ -9,6 +9,8 @@ export const LeadListItemSchema = z.object({
   phone: z.string(),
   phoneSource: z.string().nullable(),
   phoneCapturedAt: z.string().nullable(), // ISO 8601
+  appInterest: z.boolean(), // ticked the "Viso app handles everything" offer
+  appInterestAt: z.string().nullable(), // ISO 8601
   status: z.enum(["IN_PROGRESS", "COMPLETED"]),
   hasSubmission: z.boolean(),
   maxQuestionNumber: z.number().int().nullable(),

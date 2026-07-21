@@ -6,11 +6,13 @@ export const ABANDON_THRESHOLD_MS = 30 * 60 * 1000; // 30 minutes
 export const TRACK_BODY_LIMIT = 64 * 1024; // 64 KB
 export const SUBMIT_BODY_LIMIT = 256 * 1024; // 256 KB
 export const PHONE_BODY_LIMIT = 8 * 1024; // 8 KB
+export const APP_INTEREST_BODY_LIMIT = 8 * 1024; // 8 KB
 
 // Per-IP rate limits (tight on /track, stricter on /submit and /phone).
 export const TRACK_RATE_LIMIT = { max: 60, timeWindow: "1 minute" } as const;
 export const SUBMIT_RATE_LIMIT = { max: 10, timeWindow: "1 minute" } as const;
 export const PHONE_RATE_LIMIT = { max: 20, timeWindow: "1 minute" } as const;
+export const APP_INTEREST_RATE_LIMIT = { max: 20, timeWindow: "1 minute" } as const;
 
 // Hard cap on rows returned by the CSV export (avoids unbounded memory use).
 export const CSV_EXPORT_MAX = 50_000;

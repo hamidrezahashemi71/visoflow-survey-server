@@ -151,6 +151,7 @@ const analyticsRoutes: FastifyPluginAsyncZod = async (app) => {
       const [
         statusGroups,
         phoneCaptured,
+        appInterest,
         campaignGroups,
         sourceGroups,
         bandGroups,
@@ -162,6 +163,7 @@ const analyticsRoutes: FastifyPluginAsyncZod = async (app) => {
       ] = await Promise.all([
         prisma.session.groupBy({ by: ["status"], where: sessionWhere, _count: { _all: true } }),
         prisma.session.count({ where: { ...sessionWhere, phone: { not: null } } }),
+        prisma.session.count({ where: { ...sessionWhere, appInterest: true } }),
         prisma.session.groupBy({
           by: ["campaignAid", "status"],
           where: sessionWhere,
@@ -226,6 +228,8 @@ const analyticsRoutes: FastifyPluginAsyncZod = async (app) => {
           completionRate: totalSessions > 0 ? totalCompleted / totalSessions : 0,
           phoneCaptured,
           phoneCaptureRate: totalSessions > 0 ? phoneCaptured / totalSessions : 0,
+          appInterest,
+          appInterestRate: totalSessions > 0 ? appInterest / totalSessions : 0,
         },
         byCampaign: foldByCampaign(
           campaignGroups.map((g) => ({

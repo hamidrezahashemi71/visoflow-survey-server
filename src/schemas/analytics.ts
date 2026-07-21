@@ -51,6 +51,8 @@ export const OverviewResponseSchema = z.object({
     completionRate: z.number(),
     phoneCaptured: z.number().int(), // sessions with a phone, completed or not
     phoneCaptureRate: z.number(),
+    appInterest: z.number().int(), // sessions that ticked the app-offer checkbox
+    appInterestRate: z.number(),
   }),
   byCampaign: z.array(CampaignStatSchema),
   bySource: z.array(CampaignStatSchema),

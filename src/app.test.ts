@@ -41,4 +41,12 @@ describe("OpenAPI / Swagger", () => {
     expect(spec.openapi).toBeDefined();
     expect(spec.paths["/health"]).toBeDefined();
   });
+
+  it("documents the public ingestion routes", async () => {
+    const res = await app.inject({ method: "GET", url: "/docs/json" });
+
+    const spec = res.json();
+    expect(spec.paths["/v1/phone"]?.post).toBeDefined();
+    expect(spec.paths["/v1/app-interest"]?.post).toBeDefined();
+  });
 });

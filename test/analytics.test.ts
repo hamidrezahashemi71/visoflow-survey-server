@@ -163,4 +163,24 @@ describe("GET /v1/analytics/overview", () => {
     expect(body.totals.phoneCaptured).toBe(1);
     expect(body.totals.phoneCaptureRate).toBeCloseTo(0.5);
   });
+
+  it("counts app-offer clicks toward the app-interest rate", async () => {
+    await seedSession(1, 3, true); // never clicked the offer
+    await seedSession(2, 1, false);
+    await app.inject({
+      method: "POST",
+      url: "/v1/app-interest",
+      payload: { trackId: "visoflow-ir-seed2-survey", atQuestionNumber: 9 },
+    });
+
+    const res = await app.inject({
+      method: "GET",
+      url: "/v1/analytics/overview",
+      headers: adminHeaders,
+    });
+    const body = res.json();
+    expect(body.totals.sessions).toBe(2);
+    expect(body.totals.appInterest).toBe(1);
+    expect(body.totals.appInterestRate).toBeCloseTo(0.5);
+  });
 });
